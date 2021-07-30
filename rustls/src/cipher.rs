@@ -12,31 +12,31 @@ use crate::suites::Tls13CipherSuite;
 use ring::{aead, hkdf};
 
 /// Objects with this trait can decrypt TLS messages.
-pub(crate) trait MessageDecrypter: Send + Sync {
+pub trait MessageDecrypter: Send + Sync {
     fn decrypt(&self, m: OpaqueMessage, seq: u64) -> Result<PlainMessage, Error>;
 }
 
 /// Objects with this trait can encrypt TLS messages.
-pub(crate) trait MessageEncrypter: Send + Sync {
+pub trait MessageEncrypter: Send + Sync {
     fn encrypt(&self, m: BorrowedPlainMessage, seq: u64) -> Result<OpaqueMessage, Error>;
 }
 
 impl dyn MessageEncrypter {
-    pub(crate) fn invalid() -> Box<dyn MessageEncrypter> {
+    pub fn invalid() -> Box<dyn MessageEncrypter> {
         Box::new(InvalidMessageEncrypter {})
     }
 }
 
 impl dyn MessageDecrypter {
-    pub(crate) fn invalid() -> Box<dyn MessageDecrypter> {
+    pub fn invalid() -> Box<dyn MessageDecrypter> {
         Box::new(InvalidMessageDecrypter {})
     }
 }
 
-pub(crate) type MessageCipherPair = (Box<dyn MessageDecrypter>, Box<dyn MessageEncrypter>);
+pub type MessageCipherPair = (Box<dyn MessageDecrypter>, Box<dyn MessageEncrypter>);
 
-const TLS12_AAD_SIZE: usize = 8 + 1 + 2 + 2;
-fn make_tls12_aad(
+pub const TLS12_AAD_SIZE: usize = 8 + 1 + 2 + 2;
+pub fn make_tls12_aad(
     seq: u64,
     typ: ContentType,
     vers: ProtocolVersion,
@@ -50,7 +50,7 @@ fn make_tls12_aad(
     ring::aead::Aad::from(out)
 }
 
-fn make_tls12_gcm_nonce(write_iv: &[u8], explicit: &[u8]) -> Iv {
+pub fn make_tls12_gcm_nonce(write_iv: &[u8], explicit: &[u8]) -> Iv {
     debug_assert_eq!(write_iv.len(), 4);
     debug_assert_eq!(explicit.len(), 8);
 
@@ -67,7 +67,7 @@ fn make_tls12_gcm_nonce(write_iv: &[u8], explicit: &[u8]) -> Iv {
     iv
 }
 
-pub(crate) struct AesGcm;
+pub struct AesGcm;
 
 impl Tls12AeadAlgorithm for AesGcm {
     fn decrypter(&self, key: aead::LessSafeKey, iv: &[u8]) -> Box<dyn MessageDecrypter> {
@@ -85,7 +85,7 @@ impl Tls12AeadAlgorithm for AesGcm {
     }
 }
 
-pub(crate) struct ChaCha20Poly1305;
+pub struct ChaCha20Poly1305;
 
 impl Tls12AeadAlgorithm for ChaCha20Poly1305 {
     fn decrypter(&self, key: aead::LessSafeKey, iv: &[u8]) -> Box<dyn MessageDecrypter> {
@@ -97,7 +97,7 @@ impl Tls12AeadAlgorithm for ChaCha20Poly1305 {
     }
 }
 
-pub(crate) trait Tls12AeadAlgorithm: Send + Sync + 'static {
+pub trait Tls12AeadAlgorithm: Send + Sync + 'static {
     fn decrypter(&self, key: aead::LessSafeKey, iv: &[u8]) -> Box<dyn MessageDecrypter>;
     fn encrypter(
         &self,
@@ -109,7 +109,7 @@ pub(crate) trait Tls12AeadAlgorithm: Send + Sync + 'static {
 
 /// Make a `MessageCipherPair` based on the given supported ciphersuite `scs`,
 /// and the session's `secrets`.
-pub(crate) fn new_tls12(secrets: &ConnectionSecrets) -> MessageCipherPair {
+pub fn new_tls12(secrets: &ConnectionSecrets) -> MessageCipherPair {
     fn split_key<'a>(
         key_block: &'a [u8],
         alg: &'static aead::Algorithm,
@@ -159,7 +159,7 @@ pub(crate) fn new_tls12(secrets: &ConnectionSecrets) -> MessageCipherPair {
     )
 }
 
-pub(crate) fn new_tls13_read(
+pub fn new_tls13_read(
     scs: &'static Tls13CipherSuite,
     secret: &hkdf::Prk,
 ) -> Box<dyn MessageDecrypter> {
@@ -169,7 +169,7 @@ pub(crate) fn new_tls13_read(
     Box::new(Tls13MessageDecrypter::new(key, iv))
 }
 
-pub(crate) fn new_tls13_write(
+pub fn new_tls13_write(
     scs: &'static Tls13CipherSuite,
     secret: &hkdf::Prk,
 ) -> Box<dyn MessageEncrypter> {
@@ -180,13 +180,13 @@ pub(crate) fn new_tls13_write(
 }
 
 /// A `MessageEncrypter` for AES-GCM AEAD ciphersuites. TLS 1.2 only.
-struct GcmMessageEncrypter {
+pub struct GcmMessageEncrypter {
     enc_key: aead::LessSafeKey,
     iv: Iv,
 }
 
 /// A `MessageDecrypter` for AES-GCM AEAD ciphersuites.  TLS1.2 only.
-struct GcmMessageDecrypter {
+pub struct GcmMessageDecrypter {
     dec_key: aead::LessSafeKey,
     dec_salt: [u8; 4],
 }
@@ -272,7 +272,7 @@ impl GcmMessageDecrypter {
 pub struct Iv([u8; ring::aead::NONCE_LEN]);
 
 impl Iv {
-    pub(crate) fn new(value: [u8; ring::aead::NONCE_LEN]) -> Self {
+    pub fn new(value: [u8; ring::aead::NONCE_LEN]) -> Self {
         Self(value)
     }
 
@@ -295,12 +295,12 @@ impl Iv {
     }
 
     #[cfg(test)]
-    pub(crate) fn value(&self) -> &[u8; 12] {
+    pub fn value(&self) -> &[u8; 12] {
         &self.0
     }
 }
 
-pub(crate) struct IvLen;
+pub struct IvLen;
 
 impl hkdf::KeyType for IvLen {
     fn len(&self) -> usize {
@@ -316,17 +316,17 @@ impl From<hkdf::Okm<'_, IvLen>> for Iv {
     }
 }
 
-struct Tls13MessageEncrypter {
+pub struct Tls13MessageEncrypter {
     enc_key: aead::LessSafeKey,
     iv: Iv,
 }
 
-struct Tls13MessageDecrypter {
+pub struct Tls13MessageDecrypter {
     dec_key: aead::LessSafeKey,
     iv: Iv,
 }
 
-fn unpad_tls13(v: &mut Vec<u8>) -> ContentType {
+pub fn unpad_tls13(v: &mut Vec<u8>) -> ContentType {
     loop {
         match v.pop() {
             Some(0) => {}
@@ -336,7 +336,7 @@ fn unpad_tls13(v: &mut Vec<u8>) -> ContentType {
     }
 }
 
-fn make_tls13_nonce(iv: &Iv, seq: u64) -> ring::aead::Nonce {
+pub fn make_tls13_nonce(iv: &Iv, seq: u64) -> ring::aead::Nonce {
     let mut nonce = [0u8; ring::aead::NONCE_LEN];
     codec::put_u64(seq, &mut nonce[4..]);
 
@@ -472,7 +472,7 @@ impl ChaCha20Poly1305MessageDecrypter {
     }
 }
 
-const CHACHAPOLY1305_OVERHEAD: usize = 16;
+pub const CHACHAPOLY1305_OVERHEAD: usize = 16;
 
 impl MessageDecrypter for ChaCha20Poly1305MessageDecrypter {
     fn decrypt(&self, mut msg: OpaqueMessage, seq: u64) -> Result<PlainMessage, Error> {
@@ -527,7 +527,7 @@ impl MessageEncrypter for ChaCha20Poly1305MessageEncrypter {
 }
 
 /// A `MessageEncrypter` which doesn't work.
-struct InvalidMessageEncrypter {}
+pub struct InvalidMessageEncrypter {}
 
 impl MessageEncrypter for InvalidMessageEncrypter {
     fn encrypt(&self, _m: BorrowedPlainMessage, _seq: u64) -> Result<OpaqueMessage, Error> {
@@ -536,7 +536,7 @@ impl MessageEncrypter for InvalidMessageEncrypter {
 }
 
 /// A `MessageDecrypter` which doesn't work.
-struct InvalidMessageDecrypter {}
+pub struct InvalidMessageDecrypter {}
 
 impl MessageDecrypter for InvalidMessageDecrypter {
     fn decrypt(&self, _m: OpaqueMessage, _seq: u64) -> Result<PlainMessage, Error> {

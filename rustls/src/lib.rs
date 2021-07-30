@@ -234,7 +234,6 @@
     clippy::use_self,
     trivial_casts,
     trivial_numeric_casts,
-    missing_docs,
     unreachable_pub,
     unused_import_braces,
     unused_extern_crates,
@@ -312,6 +311,12 @@ pub mod internal {
     /// Low-level TLS message parsing and encoding functions.
     pub mod msgs {
         pub use crate::msgs::*;
+    }
+    pub mod conn {
+        pub use crate::conn::*;
+    }
+    pub mod cipher {
+        pub use crate::cipher::*;
     }
 }
 

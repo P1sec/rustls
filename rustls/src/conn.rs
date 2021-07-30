@@ -389,23 +389,23 @@ pub trait Connection: quic::QuicExt + Send + Sync {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub(crate) enum Protocol {
+pub enum Protocol {
     Tcp,
     #[cfg(feature = "quic")]
     Quic,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ConnectionRandoms {
-    pub(crate) we_are_client: bool,
-    pub(crate) client: [u8; 32],
-    pub(crate) server: [u8; 32],
+pub struct ConnectionRandoms {
+    pub we_are_client: bool,
+    pub client: [u8; 32],
+    pub server: [u8; 32],
 }
 
 static TLS12_DOWNGRADE_SENTINEL: [u8; 8] = [0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x01];
 
 impl ConnectionRandoms {
-    pub(crate) fn new(client: Random, server: Random, we_are_client: bool) -> Self {
+    pub fn new(client: Random, server: Random, we_are_client: bool) -> Self {
         Self {
             we_are_client,
             client: client.0,
@@ -413,12 +413,12 @@ impl ConnectionRandoms {
         }
     }
 
-    pub(crate) fn set_tls12_downgrade_marker(&mut self) {
+    pub fn set_tls12_downgrade_marker(&mut self) {
         assert!(!self.we_are_client);
         self.server[24..].copy_from_slice(&TLS12_DOWNGRADE_SENTINEL);
     }
 
-    pub(crate) fn has_tls12_downgrade_marker(&mut self) -> bool {
+    pub fn has_tls12_downgrade_marker(&mut self) -> bool {
         assert!(self.we_are_client);
         // both the server random and TLS12_DOWNGRADE_SENTINEL are
         // public values and don't require constant time comparison
@@ -434,14 +434,14 @@ fn join_randoms(first: &[u8; 32], second: &[u8; 32]) -> [u8; 64] {
 }
 
 /// TLS1.2 per-connection keying material
-pub(crate) struct ConnectionSecrets {
-    pub(crate) randoms: ConnectionRandoms,
+pub struct ConnectionSecrets {
+    pub randoms: ConnectionRandoms,
     suite: &'static Tls12CipherSuite,
-    pub(crate) master_secret: [u8; 48],
+    pub master_secret: [u8; 48],
 }
 
 impl ConnectionSecrets {
-    pub(crate) fn new(
+    pub fn new(
         randoms: &ConnectionRandoms,
         suite: &'static Tls12CipherSuite,
         pms: &[u8],
@@ -463,7 +463,7 @@ impl ConnectionSecrets {
         ret
     }
 
-    pub(crate) fn new_ems(
+    pub fn new_ems(
         randoms: &ConnectionRandoms,
         hs_hash: &Digest,
         suite: &'static Tls12CipherSuite,
@@ -485,7 +485,7 @@ impl ConnectionSecrets {
         ret
     }
 
-    pub(crate) fn new_resume(
+    pub fn new_resume(
         randoms: &ConnectionRandoms,
         suite: &'static Tls12CipherSuite,
         master_secret: &[u8],
@@ -500,7 +500,7 @@ impl ConnectionSecrets {
         ret
     }
 
-    pub(crate) fn make_key_block(&self) -> Vec<u8> {
+    pub fn make_key_block(&self) -> Vec<u8> {
         let suite = &self.suite;
         let common = &self.suite.common;
 
@@ -524,17 +524,17 @@ impl ConnectionSecrets {
         out
     }
 
-    pub(crate) fn suite(&self) -> &'static Tls12CipherSuite {
+    pub fn suite(&self) -> &'static Tls12CipherSuite {
         self.suite
     }
 
-    pub(crate) fn get_master_secret(&self) -> Vec<u8> {
+    pub fn get_master_secret(&self) -> Vec<u8> {
         let mut ret = Vec::new();
         ret.extend_from_slice(&self.master_secret);
         ret
     }
 
-    pub(crate) fn make_verify_data(&self, handshake_hash: &Digest, label: &[u8]) -> Vec<u8> {
+    pub fn make_verify_data(&self, handshake_hash: &Digest, label: &[u8]) -> Vec<u8> {
         let mut out = Vec::new();
         out.resize(12, 0u8);
 
@@ -548,15 +548,15 @@ impl ConnectionSecrets {
         out
     }
 
-    pub(crate) fn client_verify_data(&self, handshake_hash: &Digest) -> Vec<u8> {
+    pub fn client_verify_data(&self, handshake_hash: &Digest) -> Vec<u8> {
         self.make_verify_data(handshake_hash, b"client finished")
     }
 
-    pub(crate) fn server_verify_data(&self, handshake_hash: &Digest) -> Vec<u8> {
+    pub fn server_verify_data(&self, handshake_hash: &Digest) -> Vec<u8> {
         self.make_verify_data(handshake_hash, b"server finished")
     }
 
-    pub(crate) fn export_keying_material(
+    pub fn export_keying_material(
         &self,
         output: &mut [u8],
         label: &[u8],
@@ -588,33 +588,33 @@ enum Limit {
     No,
 }
 
-pub(crate) struct ConnectionCommon {
-    pub(crate) negotiated_version: Option<ProtocolVersion>,
-    pub(crate) is_client: bool,
-    pub(crate) record_layer: record_layer::RecordLayer,
-    pub(crate) suite: Option<SupportedCipherSuite>,
-    pub(crate) alpn_protocol: Option<Vec<u8>>,
+pub struct ConnectionCommon {
+    pub negotiated_version: Option<ProtocolVersion>,
+    pub is_client: bool,
+    pub record_layer: record_layer::RecordLayer,
+    pub suite: Option<SupportedCipherSuite>,
+    pub alpn_protocol: Option<Vec<u8>>,
     peer_eof: bool,
-    pub(crate) traffic: bool,
-    pub(crate) early_traffic: bool,
+    pub traffic: bool,
+    pub early_traffic: bool,
     sent_fatal_alert: bool,
     received_middlebox_ccs: bool,
     error: Option<Error>,
     message_deframer: MessageDeframer,
-    pub(crate) handshake_joiner: HandshakeJoiner,
-    pub(crate) message_fragmenter: MessageFragmenter,
+    pub handshake_joiner: HandshakeJoiner,
+    pub message_fragmenter: MessageFragmenter,
     received_plaintext: ChunkVecBuffer,
     sendable_plaintext: ChunkVecBuffer,
-    pub(crate) sendable_tls: ChunkVecBuffer,
+    pub sendable_tls: ChunkVecBuffer,
     #[allow(dead_code)] // only read for QUIC
     /// Protocol whose key schedule should be used. Unused for TLS < 1.3.
-    pub(crate) protocol: Protocol,
+    pub protocol: Protocol,
     #[cfg(feature = "quic")]
-    pub(crate) quic: Quic,
+    pub quic: Quic,
 }
 
 impl ConnectionCommon {
-    pub(crate) fn new(max_fragment_size: Option<usize>, client: bool) -> Result<Self, Error> {
+    pub fn new(max_fragment_size: Option<usize>, client: bool) -> Result<Self, Error> {
         Ok(Self {
             negotiated_version: None,
             is_client: client,
@@ -640,7 +640,7 @@ impl ConnectionCommon {
         })
     }
 
-    pub(crate) fn reader(&mut self) -> Reader {
+    pub fn reader(&mut self) -> Reader {
         Reader { common: self }
     }
 
@@ -652,7 +652,7 @@ impl ConnectionCommon {
         }
     }
 
-    pub(crate) fn is_tls13(&self) -> bool {
+    pub fn is_tls13(&self) -> bool {
         matches!(self.negotiated_version, Some(ProtocolVersion::TLSv1_3))
     }
 
@@ -703,7 +703,7 @@ impl ConnectionCommon {
         Ok(Some(MessageType::Data(msg)))
     }
 
-    pub(crate) fn process_new_packets<S: HandleState>(
+    pub fn process_new_packets<S: HandleState>(
         &mut self,
         state: &mut Option<S>,
         data: &mut S::Data,
@@ -736,7 +736,7 @@ impl ConnectionCommon {
         Ok(self.current_io_state())
     }
 
-    pub(crate) fn process_new_handshake_messages<S: HandleState>(
+    pub fn process_new_handshake_messages<S: HandleState>(
         &mut self,
         state: &mut Option<S>,
         data: &mut S::Data,
@@ -789,7 +789,7 @@ impl ConnectionCommon {
     // messages.  Otherwise the defragmented messages will have
     // been protected with two different record layer protections,
     // which is illegal.  Not mentioned in RFC.
-    pub(crate) fn check_aligned_handshake(&mut self) -> Result<(), Error> {
+    pub fn check_aligned_handshake(&mut self) -> Result<(), Error> {
         if !self.handshake_joiner.is_empty() {
             self.send_fatal_alert(AlertDescription::UnexpectedMessage);
             Err(Error::PeerMisbehavedError(
@@ -800,22 +800,22 @@ impl ConnectionCommon {
         }
     }
 
-    pub(crate) fn illegal_param(&mut self, why: &str) -> Error {
+    pub fn illegal_param(&mut self, why: &str) -> Error {
         self.send_fatal_alert(AlertDescription::IllegalParameter);
         Error::PeerMisbehavedError(why.to_string())
     }
 
-    pub(crate) fn get_suite(&self) -> Option<SupportedCipherSuite> {
+    pub fn get_suite(&self) -> Option<SupportedCipherSuite> {
         self.suite
     }
 
-    pub(crate) fn get_alpn_protocol(&self) -> Option<&[u8]> {
+    pub fn get_alpn_protocol(&self) -> Option<&[u8]> {
         self.alpn_protocol
             .as_ref()
             .map(AsRef::as_ref)
     }
 
-    pub(crate) fn decrypt_incoming(&mut self, encr: OpaqueMessage) -> Result<PlainMessage, Error> {
+    pub fn decrypt_incoming(&mut self, encr: OpaqueMessage) -> Result<PlainMessage, Error> {
         if self
             .record_layer
             .wants_close_before_decrypt()
@@ -830,7 +830,7 @@ impl ConnectionCommon {
         rc
     }
 
-    pub(crate) fn wants_read(&self) -> bool {
+    pub fn wants_read(&self) -> bool {
         // We want to read more data all the time, except when we have unprocessed plaintext.
         // This provides back-pressure to the TCP buffers. We also don't want to read more after
         // the peer has sent us a close notification.
@@ -842,7 +842,7 @@ impl ConnectionCommon {
             && (self.traffic || self.sendable_tls.is_empty())
     }
 
-    pub(crate) fn set_buffer_limit(&mut self, limit: Option<usize>) {
+    pub fn set_buffer_limit(&mut self, limit: Option<usize>) {
         self.sendable_plaintext.set_limit(limit);
         self.sendable_tls.set_limit(limit);
     }
@@ -877,7 +877,7 @@ impl ConnectionCommon {
 
     /// Fragment `m`, encrypt the fragments, and then queue
     /// the encrypted fragments for sending.
-    pub(crate) fn send_msg_encrypt(&mut self, m: PlainMessage) {
+    pub fn send_msg_encrypt(&mut self, m: PlainMessage) {
         let mut plain_messages = VecDeque::new();
         self.message_fragmenter
             .fragment(m, &mut plain_messages);
@@ -945,11 +945,11 @@ impl ConnectionCommon {
     /// Read TLS content from `rd`.  This method does internal
     /// buffering, so `rd` can supply TLS messages in arbitrary-
     /// sized chunks (like a socket or pipe might).
-    pub(crate) fn read_tls(&mut self, rd: &mut dyn io::Read) -> io::Result<usize> {
+    pub fn read_tls(&mut self, rd: &mut dyn io::Read) -> io::Result<usize> {
         self.message_deframer.read(rd)
     }
 
-    pub(crate) fn write_tls(&mut self, wr: &mut dyn io::Write) -> io::Result<usize> {
+    pub fn write_tls(&mut self, wr: &mut dyn io::Write) -> io::Result<usize> {
         self.sendable_tls.write_to(wr)
     }
 
@@ -958,11 +958,11 @@ impl ConnectionCommon {
     ///
     /// If internal buffers are too small, this function will not accept
     /// all the data.
-    pub(crate) fn send_some_plaintext(&mut self, data: &[u8]) -> usize {
+    pub fn send_some_plaintext(&mut self, data: &[u8]) -> usize {
         self.send_plain(data, Limit::Yes)
     }
 
-    pub(crate) fn send_early_plaintext(&mut self, data: &[u8]) -> usize {
+    pub fn send_early_plaintext(&mut self, data: &[u8]) -> usize {
         debug_assert!(self.early_traffic);
         debug_assert!(self.record_layer.is_encrypting());
 
@@ -1004,7 +1004,7 @@ impl ConnectionCommon {
         self.send_appdata_encrypt(data, limit)
     }
 
-    pub(crate) fn start_traffic(&mut self) {
+    pub fn start_traffic(&mut self) {
         self.traffic = true;
         self.flush_plaintext();
     }
@@ -1027,7 +1027,7 @@ impl ConnectionCommon {
     }
 
     /// Send a raw TLS message, fragmenting it if needed.
-    pub(crate) fn send_msg(&mut self, m: Message, must_encrypt: bool) {
+    pub fn send_msg(&mut self, m: Message, must_encrypt: bool) {
         #[cfg(feature = "quic")]
         {
             if let Protocol::Quic = self.protocol {
@@ -1059,7 +1059,7 @@ impl ConnectionCommon {
         }
     }
 
-    pub(crate) fn take_received_plaintext(&mut self, bytes: Payload) {
+    pub fn take_received_plaintext(&mut self, bytes: Payload) {
         self.received_plaintext.append(bytes.0);
     }
 
@@ -1078,7 +1078,7 @@ impl ConnectionCommon {
         Ok(len)
     }
 
-    pub(crate) fn start_encryption_tls12(&mut self, secrets: &ConnectionSecrets) {
+    pub fn start_encryption_tls12(&mut self, secrets: &ConnectionSecrets) {
         let (dec, enc) = cipher::new_tls12(secrets);
         self.record_layer
             .prepare_message_encrypter(enc);
@@ -1087,7 +1087,7 @@ impl ConnectionCommon {
     }
 
     #[cfg(feature = "quic")]
-    pub(crate) fn missing_extension(&mut self, why: &str) -> Error {
+    pub fn missing_extension(&mut self, why: &str) -> Error {
         self.send_fatal_alert(AlertDescription::MissingExtension);
         Error::PeerMisbehavedError(why.to_string())
     }
@@ -1097,7 +1097,7 @@ impl ConnectionCommon {
         self.send_warning_alert_no_log(desc);
     }
 
-    pub(crate) fn send_fatal_alert(&mut self, desc: AlertDescription) {
+    pub fn send_fatal_alert(&mut self, desc: AlertDescription) {
         warn!("Sending fatal alert {:?}", desc);
         debug_assert!(!self.sent_fatal_alert);
         let m = Message::build_alert(AlertLevel::Fatal, desc);
@@ -1105,7 +1105,7 @@ impl ConnectionCommon {
         self.sent_fatal_alert = true;
     }
 
-    pub(crate) fn send_close_notify(&mut self) {
+    pub fn send_close_notify(&mut self) {
         debug!("Sending warning alert {:?}", AlertDescription::CloseNotify);
         self.send_warning_alert_no_log(AlertDescription::CloseNotify);
     }
@@ -1115,7 +1115,7 @@ impl ConnectionCommon {
         self.send_msg(m, self.record_layer.is_encrypting());
     }
 
-    pub(crate) fn is_quic(&self) -> bool {
+    pub fn is_quic(&self) -> bool {
         #[cfg(feature = "quic")]
         {
             self.protocol == Protocol::Quic
@@ -1125,7 +1125,7 @@ impl ConnectionCommon {
     }
 }
 
-pub(crate) trait HandleState: Sized {
+pub trait HandleState: Sized {
     type Data;
 
     fn handle(
@@ -1142,16 +1142,16 @@ enum MessageType {
 }
 
 #[cfg(feature = "quic")]
-pub(crate) struct Quic {
+pub struct Quic {
     /// QUIC transport parameters received from the peer during the handshake
-    pub(crate) params: Option<Vec<u8>>,
-    pub(crate) alert: Option<AlertDescription>,
-    pub(crate) hs_queue: VecDeque<(bool, Vec<u8>)>,
-    pub(crate) early_secret: Option<ring::hkdf::Prk>,
-    pub(crate) hs_secrets: Option<quic::Secrets>,
-    pub(crate) traffic_secrets: Option<quic::Secrets>,
+    pub params: Option<Vec<u8>>,
+    pub alert: Option<AlertDescription>,
+    pub hs_queue: VecDeque<(bool, Vec<u8>)>,
+    pub early_secret: Option<ring::hkdf::Prk>,
+    pub hs_secrets: Option<quic::Secrets>,
+    pub traffic_secrets: Option<quic::Secrets>,
     /// Whether keys derived from traffic_secrets have been passed to the QUIC implementation
-    pub(crate) returned_traffic_keys: bool,
+    pub returned_traffic_keys: bool,
 }
 
 #[cfg(feature = "quic")]

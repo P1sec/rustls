@@ -17,7 +17,7 @@ enum DirectionState {
     Active,
 }
 
-pub(crate) struct RecordLayer {
+pub struct RecordLayer {
     message_encrypter: Box<dyn MessageEncrypter>,
     message_decrypter: Box<dyn MessageDecrypter>,
     write_seq: u64,
